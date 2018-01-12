@@ -4,6 +4,8 @@ const path = require('path');
 const webpack = require('webpack');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const autoprefixer = require('autoprefixer');
+const debug = require('debug')('beidou-plugin:webpack');
+const entryLoader = require('../lib/loader/entry-loader');
 
 module.exports = (app) => {
   const universal = app.config.isomorphic.universal;
@@ -12,6 +14,30 @@ module.exports = (app) => {
     app.config.baseDir,
     app.config.webpack.outputPath
   );
+
+  const devServer = {
+    contentBase: false,
+    noInfo: true,
+    quiet: false,
+    clientLogLevel: 'warning',
+    lazy: false,
+    watchOptions: {
+      aggregateTimeout: 300,
+      poll: true,
+    },
+    headers: { 'X-Custom-Header': 'yes' },
+    stats: {
+      colors: true,
+      chunks: false,
+    },
+    publicPath: '/build',
+    hot: true,
+  };
+
+  const webpackEntry = entryLoader(app, devServer);
+
+  debug('entry auto load as below:\n%o', webpackEntry);
+
 
   const plugins = [
     new webpack.optimize.CommonsChunkPlugin({
@@ -50,7 +76,7 @@ module.exports = (app) => {
   const config = {
     devtool: dev ? 'eval' : false,
     context: app.config.baseDir,
-    entry: app.webpackEntry,
+    entry: webpackEntry,
     output: {
       path: outputPath,
       filename: '[name].js?[hash]',
@@ -125,10 +151,8 @@ module.exports = (app) => {
     resolve: {
       extensions: ['.json', '.js', '.jsx'],
     },
-    devServer: {
-      hot: true,
-    },
     plugins,
+    devServer,
   };
 
   return config;
